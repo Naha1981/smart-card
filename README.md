@@ -21,7 +21,7 @@ Stack: **Next.js App Router (monolith) · Neon Postgres + Drizzle + pgvector · 
 | Area | Status |
 |---|---|
 | Shopify / WooCommerce connectors | Not started — only CSV import is real |
-| Evolution instance→tenant routing | Webhook picks the first `evolution` integration row; needs an `instanceName` column + lookup once you have >1 tenant |
+| Evolution instance→tenant routing | **Fixed** — webhook now matches `integrations.credentials->>'instanceName'` against the inbound payload, not "first row" |
 | Loyalty **write** (earning points) | Read/apply only, per PRD open question #3 |
 | Cart persistence | Cart lives on the `orders` row in `pending` status, not a separate `carts` table (per Architecture Standard §11 — don't extract until metrics demand it) |
 | Onboarding wizard UI | Page stub only (`app/(app)/onboarding`) — service functions in `modules/tenants/service.ts` are real |
@@ -47,6 +47,16 @@ Stack: **Next.js App Router (monolith) · Neon Postgres + Drizzle + pgvector · 
 4. `npm run dev`, then visit `/widget/naha-fresh` to talk to the demo tenant, or `/dashboard?tenant=<tenant-id-from-the-tenants-table>` for the ROI view.
 
 Note: I'd rotate the Neon database password after setup, since it was shared in this chat in plain text.
+
+## Getting WhatsApp actually talking to the AI
+
+Your Evolution instance (`smartcart-my-evolution-api.onrender.com`) and its credentials are already wired into `drizzle/0002_seed_evolution_integration.sql` (run it after `0000` and `0001`) and `.env.example`. What's still missing is the last mile:
+
+1. **A public URL.** Evolution needs to POST inbound WhatsApp messages to `app/api/webhooks/evolution`, and it can't reach `localhost:3000`. Either deploy to Vercel first (`vercel deploy`, then set env vars in the Vercel dashboard), or use a tunnel like `ngrok http 3000` for local testing.
+2. **Register the webhook** — once you have that public URL, call `setWebhook()` from `src/lib/integrations/evolution/client.ts` once (a one-off script, or a temporary API route) pointing at `<your-public-url>/api/webhooks/evolution`.
+3. **Send a WhatsApp message** to the number tied to your Evolution instance and check your server logs / the `messages` table for the round trip.
+
+I can't test any of this myself — `onrender.com` isn't on my sandbox's network allowlist, so I've wired it from the code side but the live connectivity check is on you.
 
 Everything else in `.env.example` (Evolution, PayFast, YOCO, Shopify) is only needed once you're testing those specific paths.
 

@@ -1,38 +1,54 @@
 /**
  * Evolution API (WhatsApp) client. One instance per tenant, one shared
  * webhook endpoint that routes by instance name (Architecture Standard §5).
+ * Credentials default to env (single-tenant dev), but every function accepts
+ * an override so production call sites can pass the tenant's own
+ * `integrations.credentials` (apiUrl/apiKey) instead.
  */
-const BASE_URL = process.env.EVOLUTION_API_URL;
-const API_KEY = process.env.EVOLUTION_API_KEY;
-
-function headers() {
-  return { "Content-Type": "application/json", apikey: API_KEY ?? "" };
+export interface EvolutionConfig {
+  apiUrl?: string;
+  apiKey?: string;
 }
 
-export async function createInstance(instanceName: string) {
-  const res = await fetch(`${BASE_URL}/instance/create`, {
+function resolveConfig(cfg?: EvolutionConfig) {
+  return {
+    baseUrl: cfg?.apiUrl ?? process.env.EVOLUTION_API_URL,
+    apiKey: cfg?.apiKey ?? process.env.EVOLUTION_API_KEY,
+  };
+}
+
+function headers(cfg?: EvolutionConfig) {
+  const { apiKey } = resolveConfig(cfg);
+  return { "Content-Type": "application/json", apikey: apiKey ?? "" };
+}
+
+export async function createInstance(instanceName: string, cfg?: EvolutionConfig) {
+  const { baseUrl } = resolveConfig(cfg);
+  const res = await fetch(`${baseUrl}/instance/create`, {
     method: "POST",
-    headers: headers(),
+    headers: headers(cfg),
     body: JSON.stringify({ instanceName, qrcode: true, integration: "WHATSAPP-BAILEYS" }),
   });
   if (!res.ok) throw new Error(`Evolution createInstance failed: ${res.status}`);
   return res.json();
 }
 
-export async function sendText(instanceName: string, to: string, text: string) {
-  const res = await fetch(`${BASE_URL}/message/sendText/${instanceName}`, {
+export async function sendText(instanceName: string, to: string, text: string, cfg?: EvolutionConfig) {
+  const { baseUrl } = resolveConfig(cfg);
+  const res = await fetch(`${baseUrl}/message/sendText/${instanceName}`, {
     method: "POST",
-    headers: headers(),
+    headers: headers(cfg),
     body: JSON.stringify({ number: to, text }),
   });
   if (!res.ok) throw new Error(`Evolution sendText failed: ${res.status}`);
   return res.json();
 }
 
-export async function setWebhook(instanceName: string, webhookUrl: string) {
-  const res = await fetch(`${BASE_URL}/webhook/set/${instanceName}`, {
+export async function setWebhook(instanceName: string, webhookUrl: string, cfg?: EvolutionConfig) {
+  const { baseUrl } = resolveConfig(cfg);
+  const res = await fetch(`${baseUrl}/webhook/set/${instanceName}`, {
     method: "POST",
-    headers: headers(),
+    headers: headers(cfg),
     body: JSON.stringify({
       webhook: { url: webhookUrl, events: ["MESSAGES_UPSERT"], webhook_by_events: false },
     }),
