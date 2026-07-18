@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sc-bg: #0a0a0b;
+  --sc-surface: #141416;
+  --sc-border: #26262a;
+  --sc-accent: #34d399; /* SmartCart green — "always in stock" signal */
+  --sc-accent-dim: #0f5132;
+  --sc-text: #f4f4f5;
+  --sc-text-dim: #9a9aa2;
+}
