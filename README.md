@@ -52,8 +52,15 @@ Note: I'd rotate the Neon database password after setup, since it was shared in 
 
 Your Evolution instance (`smartcart-my-evolution-api.onrender.com`) and its credentials are already wired into `drizzle/0002_seed_evolution_integration.sql` (run it after `0000` and `0001`) and `.env.example`. What's still missing is the last mile:
 
-1. **A public URL.** Evolution needs to POST inbound WhatsApp messages to `app/api/webhooks/evolution`, and it can't reach `localhost:3000`. Either deploy to Vercel first (`vercel deploy`, then set env vars in the Vercel dashboard), or use a tunnel like `ngrok http 3000` for local testing.
-2. **Register the webhook** — once you have that public URL, call `setWebhook()` from `src/lib/integrations/evolution/client.ts` once (a one-off script, or a temporary API route) pointing at `<your-public-url>/api/webhooks/evolution`.
+1. **A public URL.** Evolution needs to POST inbound WhatsApp messages to `app/api/webhooks/evolution`, and it can't reach `localhost:3000`. Either deploy to Vercel first (`vercel deploy`, then set env vars in the Vercel dashboard), or use a tunnel like `ngrok http 3000` for local testing. This is separate from your Evolution instance's own URL (`smartcart-my-evolution-api.onrender.com`) — that one already being public lets your app call *out* to Evolution; this step is about Evolution calling *into* your app.
+2. **Register the webhook** — set `ADMIN_SETUP_SECRET` in `.env.local`, then:
+   ```bash
+   curl -X POST http://localhost:3000/api/admin/setup-evolution-webhook \
+     -H "Content-Type: application/json" \
+     -H "x-admin-secret: <your ADMIN_SETUP_SECRET>" \
+     -d '{"tenantSlug":"naha-fresh","publicWebhookUrl":"https://<your-public-url>/api/webhooks/evolution"}'
+   ```
+   This is a one-off setup route (`app/api/admin/setup-evolution-webhook`), not part of the product — re-run it any time your public URL changes (every new ngrok session, for instance). Consider deleting the route once you're deployed for real and don't need to re-register webhooks by hand.
 3. **Send a WhatsApp message** to the number tied to your Evolution instance and check your server logs / the `messages` table for the round trip.
 
 I can't test any of this myself — `onrender.com` isn't on my sandbox's network allowlist, so I've wired it from the code side but the live connectivity check is on you.
