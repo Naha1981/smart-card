@@ -34,19 +34,19 @@ Stack: **Next.js App Router (monolith) · Neon Postgres + Drizzle + pgvector · 
 
 ## Local setup
 
-```bash
-npm install
-cp .env.example .env.local   # fill in DATABASE_URL at minimum to run anything
-npm run db:generate          # generate SQL migrations from schema.ts
-npm run db:migrate           # apply them to your Neon database
-npm run dev
-```
+1. `git clone https://github.com/Naha1981/smart-card.git && cd smart-card && npm install`
+2. `cp .env.example .env.local` and set:
+   - `DATABASE_URL` — your Neon connection string
+   - `BETTER_AUTH_SECRET` — `openssl rand -base64 32`
+   - `AI_DEFAULT_PROVIDER` + the matching API key (`OPENAI_API_KEY` by default; set to `groq` + `GROQ_API_KEY` if you'd rather use your usual Groq setup)
+3. **Run migrations by hand in the Neon console** (SQL Editor → paste → run), in order:
+   - `drizzle/0000_init.sql` — creates every table, enables `pgvector`
+   - `drizzle/0001_seed_demo.sql` — optional, adds a demo tenant `naha-fresh` with 4 products so you have something to talk to immediately
 
-You'll need, at minimum, to get past a blank screen:
-1. A **Neon Postgres** database (free tier is fine) → `DATABASE_URL`
-2. `pgvector` extension enabled on that database (`CREATE EXTENSION vector;`)
-3. `BETTER_AUTH_SECRET` (`openssl rand -base64 32`)
-4. One AI provider key (`OPENAI_API_KEY` is the path of least resistance given the default config; Groq works too, just point `AI_DEFAULT_PROVIDER=groq` and use Groq model names)
+   These are hand-written to exactly match `src/lib/db/schema.ts`. I couldn't run `drizzle-kit migrate` myself — my sandbox's network allowlist doesn't include `neon.tech`, only npm/GitHub/PyPI-type domains — so this is the one step I can't do for you. Once a schema change is needed later, run `npm run db:generate` locally (no network needed, just reads `schema.ts`) and apply the resulting SQL the same way, or connect `drizzle-kit migrate` directly since your machine *can* reach Neon.
+4. `npm run dev`, then visit `/widget/naha-fresh` to talk to the demo tenant, or `/dashboard?tenant=<tenant-id-from-the-tenants-table>` for the ROI view.
+
+Note: I'd rotate the Neon database password after setup, since it was shared in this chat in plain text.
 
 Everything else in `.env.example` (Evolution, PayFast, YOCO, Shopify) is only needed once you're testing those specific paths.
 
